@@ -37,10 +37,15 @@ public class Chapter05 {
     public void run()
             throws InterruptedException {
         Jedis conn = new Jedis("localhost");
-        conn.select(15);
+        conn.select(13);
 
+        //List  KEY-> recent:test:info (只保留最近100条数据 ltrim)
         testLogRecent(conn);
+
+
         testLogCommon(conn);
+
+        //
         testCounters(conn);
         testStats(conn);
         testAccessTime(conn);
@@ -74,6 +79,7 @@ public class Chapter05 {
                 logCommon(conn, "test", "message-" + count);
             }
         }
+        //遍历
         Set<Tuple> common = conn.zrevrangeWithScores("common:test:info", 0, -1);
         System.out.println("The current number of common messages is: " + common.size());
         System.out.println("Those common messages are:");
@@ -216,7 +222,7 @@ public class Chapter05 {
         System.out.println("\n----- testConfig -----");
         System.out.println("Let's set a config and then get a connection from that config...");
         Map<String, Object> config = new HashMap<String, Object>();
-        config.put("db", 15);
+        config.put("db", 13);
         setConfig(conn, "redis", "test", config);
 
         Jedis conn2 = redisConnection("test");
@@ -245,12 +251,14 @@ public class Chapter05 {
         String commonDest = "common:" + name + ':' + severity;
         String startKey = commonDest + ":start";
         long end = System.currentTimeMillis() + timeout;
+        //指定时间内录入数据信息
         while (System.currentTimeMillis() < end) {
             conn.watch(startKey);
             String hourStart = ISO_FORMAT.format(new Date());
             String existing = conn.get(startKey);
 
             Transaction trans = conn.multi();
+            //超过指定时间范围，重命名KEY   (last pstart start
             if (existing != null && COLLATOR.compare(existing, hourStart) < 0) {
                 trans.rename(commonDest, commonDest + ":last");
                 trans.rename(startKey, commonDest + ":pstart");
